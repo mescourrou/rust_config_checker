@@ -1,12 +1,13 @@
 extern crate proc_macro;
 
-use std::mem;
+use std::{mem, str::FromStr};
 
 use proc_macro::TokenStream;
-use quote::{quote};
-use syn::{Data, LitStr};
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{quote, ToTokens};
+use syn::{token::Token, Data, Ident, LitStr, Token};
 
-#[proc_macro_derive(Check, attributes(check, ge, gt, le, lt, inside))]
+#[proc_macro_derive(Check, attributes(check, ge, gt, le, lt, inside, or))]
 pub fn derive_check_config(item: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(item as syn::DeriveInput);
     
@@ -27,42 +28,23 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
                                 implementation.extend(quote! {
                                     if !::config_checker::check_config(&self.#id) {
                                         ret = false;
-                                        println!(stringify!({} {} From field #id of #struct_identifier), "NOTE: ".blue(), "\u{21b3}");
+                                        println!("{} {} From field `{}` of `{}`", "NOTE: ".blue(), "\u{21b3}", stringify!(#id), stringify!(#struct_identifier));
                                     }
                                 });
                             },
-                            "ge" => {
-                                let r = &attr.meta.require_name_value().expect("ge attribute should be name value").value;
+                            "ge" | "gt" | "le" | "lt" | "eq" | "ne" => {
+                                let op = get_operator(&attr_id);
+                                let cond;
+                                let r;
+                                if let Ok(l) = &attr.meta.require_list() {
+                                    r = l.tokens.clone();
+                                    cond = quote! {self.#id #op #r};
+                                } else {
+                                    panic!("{} should be a list (=)", attr_id.to_string());
+                                }
                                 implementation.extend(quote! {
-                                    if self.#id < #r {
-                                        println!("{} Field `{}` of `{}` should be greater or equal to `{}`", "ERROR:".red(), stringify!(#id), stringify!(#struct_identifier), stringify!(#r));
-                                        ret = false;
-                                    }
-                                });
-                            },
-                            "gt" => {
-                                let r = &attr.meta.require_name_value().expect("gt attribute should be name value").value;
-                                implementation.extend(quote! {
-                                    if self.#id <= #r {
-                                        println!("{} Field `{}` of `{}` should be greater than `{}`", "ERROR:".red(), stringify!(#id), stringify!(#struct_identifier), stringify!(#r));
-                                        ret = false;
-                                    }
-                                });
-                            },
-                            "le" => {
-                                let r = &attr.meta.require_name_value().expect("le attribute should be name value").value;
-                                implementation.extend(quote! {
-                                    if self.#id > #r {
-                                        println!("{} Field `{}` of `{}` should be less or equal to `{}`", "ERROR:".red(), stringify!(#id), stringify!(#struct_identifier), stringify!(#r));
-                                        ret = false;
-                                    }
-                                });
-                            },
-                            "lt" => {
-                                let r = &attr.meta.require_name_value().expect("lt attribute should be name value").value;
-                                implementation.extend(quote! {
-                                    if self.#id >= #r {
-                                        println!("{} Field `{}` of `{}` should be less than `{}`", "ERROR:".red(), stringify!(#id), stringify!(#struct_identifier), stringify!(#r));
+                                    if #cond {
+                                        println!("{} Field `{}` of `{}` should be {} `{}`", "ERROR:".red(), stringify!(#id), stringify!(#struct_identifier), stringify!(#op), stringify!(#r));
                                         ret = false;
                                     }
                                 });
@@ -78,6 +60,10 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
                                     }
                                 });
                             },
+                            "or" => {
+                                let r = &attr.meta.require_list().expect("in attribute should be a list").tokens;
+                                
+                            }
                             
                             &_ => {},
                         }
@@ -101,4 +87,17 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
             }
         }
     }.into()
+}
+
+
+fn get_operator(s: &Ident) -> TokenStream2 {
+    match s.to_string().as_str() {
+        "gt" => TokenStream2::from_str(">"),
+        "ge" => TokenStream2::from_str(">="),
+        "lt" => TokenStream2::from_str("<"),
+        "le" => TokenStream2::from_str("<="),
+        "eq" => TokenStream2::from_str("=="),
+        "ne" => TokenStream2::from_str("!="),
+        &_ => panic!("Should not be called for other operators"),
+    }.unwrap()
 }

@@ -4,12 +4,11 @@ use config_checker_macros::Check;
 use config_checker::*;
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Debug, Serialize, Deserialize, Clone, Check)]
 struct Root {
     #[inside("Papy", "Mamie")]
     name: String,
-    #[ge =0.]#[lt=1.]
+    #[ge(0.)]#[lt(self.child.value)]
     value: f32,
     #[check]
     child: Child,
@@ -27,7 +26,7 @@ impl Default for Root {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Check)]
 struct Child {
-    #[ge =1.]
+    #[ge(1.)]
     value: f32,
     child: GreatChild,
 }

@@ -11,7 +11,7 @@ struct Root {
     #[inside("Papy", "Mamie")]
     name: String,
     #[ge = 0.]
-    #[lt = 1.]
+    #[lt(child.value)]
     value: f32,
     #[check]
     child: Child,
@@ -342,7 +342,7 @@ impl ::config_checker::ConfigCheckable for Root {
             #[rustc_box]
             ::alloc::boxed::Box::new(["Papy", "Mamie"]),
         );
-        if !v.contains(self.name) {
+        if !v.contains(&self.name.as_str()) {
             {
                 ::std::io::_print(
                     format_args!(
@@ -356,21 +356,22 @@ impl ::config_checker::ConfigCheckable for Root {
             };
             ret = false;
         }
-        if self.value < 0. {
+        if self.value >= 0. {
             {
                 ::std::io::_print(
                     format_args!(
-                        "{0} Field `{1}` of `{2}` should be greater or equal to `{3}`\n",
+                        "{0} Field `{1}` of `{2}` should be {3} `{4}`\n",
                         "ERROR:".red(),
                         "value",
                         "Root",
+                        ">=",
                         "0.",
                     ),
                 );
             };
             ret = false;
         }
-        if self.value >= 1. {
+        if self.value < self.child.value {
             {
                 ::std::io::_print(
                     format_args!(
@@ -378,7 +379,7 @@ impl ::config_checker::ConfigCheckable for Root {
                         "ERROR:".red(),
                         "value",
                         "Root",
-                        "1.",
+                        "child.value",
                     ),
                 );
             };
@@ -389,9 +390,11 @@ impl ::config_checker::ConfigCheckable for Root {
             {
                 ::std::io::_print(
                     format_args!(
-                        "{0} {1} From field child of Root\n",
+                        "{0} {1} From field `{2}` of `{3}`\n",
                         "NOTE: ".blue(),
                         "\u{21b3}",
+                        "child",
+                        "Root",
                     ),
                 );
             };
@@ -691,14 +694,15 @@ impl ::config_checker::ConfigCheckable for Child {
         use colored::Colorize;
         let mut ret = true;
         let mut fields: Vec<String> = Vec::new();
-        if self.value < 1. {
+        if self.value >= 1. {
             {
                 ::std::io::_print(
                     format_args!(
-                        "{0} Field `{1}` of `{2}` should be greater or equal to `{3}`\n",
+                        "{0} Field `{1}` of `{2}` should be {3} `{4}`\n",
                         "ERROR:".red(),
                         "value",
                         "Child",
+                        ">=",
                         "1.",
                     ),
                 );
