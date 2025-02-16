@@ -1,0 +1,15 @@
+[workspace]
+members = [ "macros","example"]
+
+[package]
+name = "config-checker"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+[lib]
+
+
+[dependencies]
+colored = "3.0.0"
+config-checker-macros = {path = "./macros", version = "*"}

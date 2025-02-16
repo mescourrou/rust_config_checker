@@ -1,0 +1,16 @@
+[package]
+name = "config-checker-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+
+[dependencies]
+syn = "2.0.98"
+quote = "1.0.38"
+proc-macro2 = "1.0.93"
+darling = "0.20.10"
+static_assertions = "1.1.0"
+
