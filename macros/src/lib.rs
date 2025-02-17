@@ -70,7 +70,7 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
         #[automatically_derived]
         impl ::config_checker::ConfigCheckable for #struct_identifier {
             fn check(&self) -> bool {
-                use colored::Colorize;
+                use ::colored::Colorize;
                 use ::config_checker::*;
                 let mut ret = true;
                 #implementation

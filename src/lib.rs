@@ -1,5 +1,5 @@
 pub extern crate colored;
-pub extern crate config_checker_macros;
+pub extern crate config_checker_macros as macros;
 pub trait ConfigCheckable {
     fn check(&self) -> bool;
 }
