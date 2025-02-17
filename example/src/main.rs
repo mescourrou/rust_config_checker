@@ -1,13 +1,13 @@
 use std::{path::Path, process::exit};
 
 use config_checker::*;
-use config_checker_macros::Check;
+use config_checker::macros::Check;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Check)]
+#[derive(Debug, Deserialize, Serialize, Check)]
 struct Root {
     #[convert(as_str)]
-    #[check(if(is_enum(self.child.gender, Gender::Male(_)), inside("Papy", "Papa"), if(is_enum(self.child.gender, Gender::Female(_)), inside("Mamie", "Maman"))))]
+    #[check(if(is_enum(self.child.gender, Gender::Male), inside("Papy", "Papa"), if(is_enum(self.child.gender, Gender::Female), inside("Mamie", "Maman"))))]
     name: String,
     #[check(and(ge(0.), lt(self.child.value)))]
     value: f32,
@@ -25,18 +25,40 @@ impl Default for Root {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Check)]
 pub enum Gender {
-    Male(i32),
-    Female(f32),
-    Other(usize),
+    Male,
+    Female,
+    Other,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Check)]
+#[derive(Debug, Deserialize, Serialize, Check)]
+struct Car {
+    #[check(and(gt(0.), lt(3500.)))]
+    weight: f32,
+}
+
+#[derive(Debug, Deserialize, Serialize, Check)]
+struct Truck {
+    #[check(gt(3500.))]
+    weight: f32,
+    wheels: u8,
+}
+
+#[derive(Debug, Deserialize, Serialize, Check)]
+pub enum Toy {
+    Car(Car),
+    Truck(Truck),
+}
+
+#[derive(Debug, Deserialize, Serialize, Check)]
 struct Child {
     #[check(or(ge(1.), lt(0.)))]
     value: f32,
+    #[check]
     gender: Gender,
+    #[check]
+    toy: Toy,
     child: GreatChild,
 }
 
@@ -44,13 +66,16 @@ impl Default for Child {
     fn default() -> Self {
         Self {
             value: 4.,
-            gender: Gender::Other(0),
+            gender: Gender::Other,
+            toy: Toy::Car(Car {
+                weight: 2.
+            }),
             child: GreatChild::default(),
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct GreatChild {
     name: String,
     value: f32,

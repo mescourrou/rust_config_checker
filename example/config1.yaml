@@ -1,9 +1,11 @@
-name: Papy
+name: Mamie
 value: 1.5
 child:
   value: 0.5
-  gender:
-    Male: 0
+  gender: Male
+  toy:
+    Car:
+      weight: 4000
   child:
     name: child_name
     value: 2.0
