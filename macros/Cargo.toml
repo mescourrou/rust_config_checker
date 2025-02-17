@@ -9,8 +9,8 @@ proc-macro = true
 
 [dependencies]
 syn = "2.0.98"
-quote = "1.0.38"
-proc-macro2 = "1.0.93"
+quote = "^1.0.38"
+proc-macro2 = "^1.0.92"
 darling = "0.20.10"
 static_assertions = "1.1.0"
 
