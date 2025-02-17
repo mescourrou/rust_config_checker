@@ -1,21 +1,21 @@
 extern crate proc_macro;
 
-use std::{mem, str::FromStr};
+use std::str::FromStr;
 
 use proc_macro::TokenStream;
 use proc_macro2::{Group, TokenStream as TokenStream2, TokenTree};
 use quote::{quote, ToTokens};
-use syn::{token::Token, Attribute, Data, Ident, LitStr, Token};
+use syn::{Data, Ident};
 
 #[proc_macro_derive(Check, attributes(check, convert))]
 pub fn derive_check_config(item: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(item as syn::DeriveInput);
-    
+
     let struct_identifier = &input.ident;
 
     let mut implementation = TokenStream2::new();
     match &input.data {
-        Data::Struct(syn::DataStruct { fields, ..}) => {
+        Data::Struct(syn::DataStruct { fields, .. }) => {
             for field in fields {
                 let id = field.ident.as_ref().unwrap().to_token_stream().clone();
                 let mut accessible_id = id.clone();
@@ -29,11 +29,15 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
                                 } else {
                                     panic!("convert should be a list ()");
                                 }
-                            },
+                            }
                             "check" => {
                                 if let Ok(l) = &attr.meta.require_list() {
                                     let expr = l.tokens.clone();
-                                    let cond = evaluate_expr(&expr, &accessible_id, struct_identifier).first().expect("Error").clone();
+                                    let cond =
+                                        evaluate_expr(&expr, &accessible_id, struct_identifier)
+                                            .first()
+                                            .expect("Error")
+                                            .clone();
                                     implementation.extend(quote! {
                                         if !(#cond) {
                                         // if !(false) {
@@ -52,16 +56,14 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
                                 } else {
                                     panic!("`check` should be a path (for sub-struct check) or a list (as a function)");
                                 }
-                            },
-                            &_ => {},
+                            }
+                            &_ => {}
                         }
                     }
                 }
-
             }
-
-        },
-        _ => unimplemented!()
+        }
+        _ => unimplemented!(),
     }
 
     quote! {
@@ -75,9 +77,9 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
                 ret
             }
         }
-    }.into()
+    }
+    .into()
 }
-
 
 fn get_operator(s: &TokenStream2) -> TokenStream2 {
     match s.to_string().as_str() {
@@ -90,11 +92,15 @@ fn get_operator(s: &TokenStream2) -> TokenStream2 {
         "and" => TokenStream2::from_str("&&"),
         "or" => TokenStream2::from_str("||"),
         &_ => panic!("Should not be called for other operators ({})", s),
-    }.unwrap()
+    }
+    .unwrap()
 }
 
-
-fn evaluate_expr(expr:&TokenStream2, field_id: &TokenStream2, struct_identifier: &Ident) -> Vec<TokenStream2> {
+fn evaluate_expr(
+    expr: &TokenStream2,
+    field_id: &TokenStream2,
+    struct_identifier: &Ident,
+) -> Vec<TokenStream2> {
     let mut cond = vec![TokenStream2::new()];
     let mut ident = TokenStream2::new();
     let mut point_before = false;
@@ -102,12 +108,14 @@ fn evaluate_expr(expr:&TokenStream2, field_id: &TokenStream2, struct_identifier:
     for node in expr.clone().into_iter() {
         match &node {
             TokenTree::Group(g) => {
-                cond.last_mut().unwrap().extend(evaluate_ident(&ident.clone(), g, field_id, struct_identifier));
+                cond.last_mut().unwrap().extend(evaluate_ident(
+                    &ident.clone(),
+                    g,
+                    field_id,
+                    struct_identifier,
+                ));
                 ident = TokenStream2::new();
-                // cond.last_mut().unwrap().extend(quote! {
-                //     Group #g (#ident)  ||
-                // });
-            },
+            }
             TokenTree::Ident(i) => {
                 if point_before {
                     if !ident.is_empty() {
@@ -120,48 +128,46 @@ fn evaluate_expr(expr:&TokenStream2, field_id: &TokenStream2, struct_identifier:
                 } else {
                     ident = i.to_token_stream();
                 }
-                // cond.last_mut().unwrap().extend(quote! {
-                //     Ident #i (#ident) ||
-                // });
                 point_before = false;
                 commas = 0;
-            },
+            }
             TokenTree::Literal(lit) => {
                 cond.last_mut().unwrap().extend(quote! {#lit});
-            },
+            }
             TokenTree::Punct(p) => {
-                // cond.last_mut().unwrap().extend(quote! {
-                //     Punct #p (#ident)  ||
-                // });
                 match p.as_char() {
                     '.' => {
                         point_before = true;
-                    },
+                    }
                     ',' => {
                         cond.last_mut().unwrap().extend(ident);
                         cond.push(TokenStream2::new());
                         ident = TokenStream2::new();
-                    },
+                    }
                     ':' => {
                         commas += 1;
                         if commas > 2 {
                             panic!("::: is not valid");
                         }
-                    },
+                    }
                     _ => {}
                 };
-            },
+            }
         }
     }
     if !ident.is_empty() {
         cond.last_mut().unwrap().extend(ident.to_token_stream());
     }
-    
+
     cond
-    // TokenStream2::new()
 }
 
-fn evaluate_ident(ident: &TokenStream2, group: &Group, field_id: &TokenStream2, struct_identifier: &Ident) -> Result<TokenStream2, ()> {
+fn evaluate_ident(
+    ident: &TokenStream2,
+    group: &Group,
+    field_id: &TokenStream2,
+    struct_identifier: &Ident,
+) -> Result<TokenStream2, ()> {
     match ident.to_string().as_str() {
         // Comparison operators
         "ge" | "gt" | "le" | "lt" | "eq" | "ne" => {
@@ -169,7 +175,11 @@ fn evaluate_ident(ident: &TokenStream2, group: &Group, field_id: &TokenStream2, 
             let r = group.stream();
             let r = evaluate_expr(&r, field_id, struct_identifier);
 
-            assert!(r.len() > 0, "{} should have at least 1 parameter", ident.to_string());
+            assert!(
+                r.len() > 0,
+                "{} should have at least 1 parameter",
+                ident.to_string()
+            );
             let lhs;
             let rhs;
             if r.len() == 1 {
@@ -181,7 +191,7 @@ fn evaluate_ident(ident: &TokenStream2, group: &Group, field_id: &TokenStream2, 
             }
             let cond = quote! {#lhs #op #rhs};
             Ok(cond)
-        },
+        }
         // List operators (replacing the delimiter)
         "and" | "or" => {
             let r = group.stream();
@@ -195,18 +205,24 @@ fn evaluate_ident(ident: &TokenStream2, group: &Group, field_id: &TokenStream2, 
                 cond.extend(quote! {(#c)});
             }
             Ok(cond)
-        },
+        }
         "inside" => {
             let r = group.stream();
             let cond = quote! { vec![#r].contains(&self.#field_id) };
 
             Ok(cond)
-        },
+        }
         "if" => {
             let r = group.stream();
             let r = evaluate_expr(&r, field_id, struct_identifier);
-            assert!(r.len() <= 3, "If operator should be maximum with 3 parameters if(cond, if_yes [, if_no])");
-            assert!(r.len() >= 2, "If operator should be minimum with 2 parameters if(cond, if_yes [, if_no])");
+            assert!(
+                r.len() <= 3,
+                "If operator should be maximum with 3 parameters if(cond, if_yes [, if_no])"
+            );
+            assert!(
+                r.len() >= 2,
+                "If operator should be minimum with 2 parameters if(cond, if_yes [, if_no])"
+            );
             let mut cond = TokenStream2::new();
             let if_cond = &r[0];
             let if_true = &r[1];
@@ -215,8 +231,8 @@ fn evaluate_ident(ident: &TokenStream2, group: &Group, field_id: &TokenStream2, 
                 let if_false = &r[2];
                 cond.extend(quote! { || #if_false });
             }
-            Ok(quote!{(#cond)})
-        },
+            Ok(quote! {(#cond)})
+        }
         "is_enum" => {
             let r = group.stream();
             let r = evaluate_expr(&r, field_id, struct_identifier);
@@ -233,9 +249,9 @@ fn evaluate_ident(ident: &TokenStream2, group: &Group, field_id: &TokenStream2, 
             }
             let cond = quote! {(match #rhs { #lhs => true, _=> false})};
             Ok(cond)
-        },
+        }
         &_ => {
             Ok(quote! {#ident #group}) // For enum(_)
-        },
+        }
     }
 }

@@ -1,7 +1,7 @@
 use std::{path::Path, process::exit};
 
-use config_checker_macros::Check;
 use config_checker::*;
+use config_checker_macros::Check;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Check)]
@@ -29,7 +29,7 @@ impl Default for Root {
 pub enum Gender {
     Male(i32),
     Female(f32),
-    Other(usize)
+    Other(usize),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Check)]
@@ -60,7 +60,7 @@ impl Default for GreatChild {
     fn default() -> Self {
         Self {
             name: "baby".to_string(),
-            value: 6.
+            value: 6.,
         }
     }
 }
@@ -76,15 +76,5 @@ fn main() {
     };
     println!("Config check: {}", config.check());
 
-    if let Gender::Female(_) = config.child.gender {
-        
-    }
-
-    // let c = std::str::from_utf8(&(0x21B3 as u32).to_be_bytes()).unwrap();
-    // match Box::new(&config.child).try_into() {
-    //     Ok(c) => println!("Coucou"),
-    //     Err(_) => println!("Not coucou"),
-    // };
-    
     println!("Loaded configuration: \n{:#?}", config);
 }
