@@ -1,7 +1,7 @@
 name: my_name
-value: 2.5
+value: 1.5
 child:
-  value: 1.0
+  value: 0.5
   child:
-   name: my_name
+   name: child_name
    value: 2.0

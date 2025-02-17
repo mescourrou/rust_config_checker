@@ -6,9 +6,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Check)]
 struct Root {
-    #[inside("Papy", "Mamie")]
+    #[convert(as_str)]
+    #[check(if(is_enum(self.child.gender, Gender::Male(_)), inside("Papy", "Papa"), if(is_enum(self.child.gender, Gender::Female(_)), inside("Mamie", "Maman"))))]
     name: String,
-    #[ge(0.)]#[lt(self.child.value)]
+    #[check(and(ge(0.), lt(self.child.value)))]
     value: f32,
     #[check]
     child: Child,
@@ -24,10 +25,18 @@ impl Default for Root {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum Gender {
+    Male(i32),
+    Female(f32),
+    Other(usize)
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Check)]
 struct Child {
-    #[ge(1.)]
+    #[check(or(ge(1.), lt(0.)))]
     value: f32,
+    gender: Gender,
     child: GreatChild,
 }
 
@@ -35,6 +44,7 @@ impl Default for Child {
     fn default() -> Self {
         Self {
             value: 4.,
+            gender: Gender::Other(0),
             child: GreatChild::default(),
         }
     }
@@ -65,6 +75,10 @@ fn main() {
         }
     };
     println!("Config check: {}", config.check());
+
+    if let Gender::Female(_) = config.child.gender {
+        
+    }
 
     // let c = std::str::from_utf8(&(0x21B3 as u32).to_be_bytes()).unwrap();
     // match Box::new(&config.child).try_into() {

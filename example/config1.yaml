@@ -1,7 +1,9 @@
-name: my_name
+name: Papy
 value: 1.5
 child:
   value: 0.5
+  gender:
+    Male: 0
   child:
-   name: child_name
-   value: 2.0
+    name: child_name
+    value: 2.0
