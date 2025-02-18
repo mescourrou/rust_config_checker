@@ -94,8 +94,8 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
             }
 
             fn __check(&self, depth: usize) -> bool {
-                use ::config_checker::colored::Colorize;
-                use ::config_checker::*;
+                use colored::Colorize;
+                // use ::config_checker::*;
                 let depth_space = String::from_utf8(vec![b' '; depth*2]).unwrap();
                 let mut ret = true;
                 #implementation;
