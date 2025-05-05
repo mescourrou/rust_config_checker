@@ -41,3 +41,24 @@ impl<T: ConfigCheckable> ConfigCheckable for Vec<T>  {
         ret
     }
 }
+
+impl<T: ConfigCheckable> ConfigCheckable for Option<T>  {
+    fn check(&self) -> bool {
+        if let Some(t) = self {
+            t.check()
+        } else {
+            true
+        }
+    }
+    fn __check(&self, depth: usize) -> bool {
+        let mut ret = true;
+        let depth_space = String::from_utf8(vec![b' '; depth*2]).unwrap();
+        if let Some(t) = self {
+            if !t.__check(depth) {
+                ret = false;
+                println!("{} {depth_space}  {} From option", ::colored::Colorize::blue("NOTE: "), "\u{21b3}");
+            }
+        }
+        ret
+    }
+}
