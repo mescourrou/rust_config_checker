@@ -42,15 +42,19 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
                                         if !(#cond) {
                                         // if !(false) {
                                             // println!(stringify!(#cond));
-                                            println!("{} {depth_space}In field `{}` of `{}`", "ERROR:".red(), stringify!(#id), stringify!(#struct_identifier));
-                                            ret = false;
+                                            if ret.is_ok() {
+                                                ret = Err(String::new());
+                                            }
+                                            ret = Err(ret.err().unwrap() + format!("{} {depth_space}In field `{}` of `{}`\n", "ERROR:".red(), stringify!(#id), stringify!(#struct_identifier)).as_str());
                                         }
                                     });
                                 } else if let Ok(_) = &attr.meta.require_path_only() {
                                     implementation.extend(quote! {
-                                        if !::config_checker::__check_config(&self.#id, depth+1) {
-                                            ret = false;
-                                            println!("{} {depth_space}  {} From field `{}` of `{}`", "NOTE: ".blue(), "\u{21b3}", stringify!(#id), stringify!(#struct_identifier));
+                                        if let Err(e) = ::config_checker::__check_config(&self.#id, depth+1) {
+                                            if ret.is_ok() {
+                                                ret = Err(String::new());
+                                            }
+                                            ret = Err(ret.err().unwrap() + format!("{} {depth_space}From field `{}` of `{}`:\n{e}", "NOTE: ".blue(), stringify!(#id), stringify!(#struct_identifier)).as_str());
                                         }
                                     });
                                 } else {
@@ -70,9 +74,11 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
                 if !variant.fields.is_empty() {
                     arms.extend(quote! {
                         #struct_identifier::#id(o) => {
-                            if !::config_checker::__check_config(o, depth+1) {
-                                ret = false;
-                                println!("{} {depth_space}  {} From field `{}` of `{}`", "NOTE: ".blue(), "\u{21b3}", stringify!(#id), stringify!(#struct_identifier));
+                            if let Err(e) = ::config_checker::__check_config(o, depth+1) { 
+                                if ret.is_ok() {
+                                    ret = Err(String::new());
+                                }
+                                ret = Err(ret.err().unwrap() + format!("{} {depth_space}From field `{}` of `{}`:\n{e}", "NOTE: ".blue(), stringify!(#id), stringify!(#struct_identifier)).as_str());
                             }
                         },
                     });
@@ -89,15 +95,15 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
     quote! {
         #[automatically_derived]
         impl ::config_checker::ConfigCheckable for #struct_identifier {
-            fn check(&self) -> bool {
+            fn check(&self) -> Result<(), String> {
                 self.__check(0)
             }
 
-            fn __check(&self, depth: usize) -> bool {
+            fn __check(&self, depth: usize) -> Result<(), String> {
                 use colored::Colorize;
                 // use ::config_checker::*;
-                let depth_space = String::from_utf8(vec![b' '; depth*2]).unwrap();
-                let mut ret = true;
+                let depth_space = vec!["| "; depth].join("");
+                let mut ret = Ok(());
                 #implementation;
                 ret
             }

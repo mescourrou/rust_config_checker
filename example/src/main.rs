@@ -99,7 +99,10 @@ fn main() {
             exit(-1);
         }
     };
-    println!("Config check: {}", config.check());
+    println!("Config check: {}", match config.check() {
+        Ok(_) => "OK".to_string(),
+        Err(e) => "\n".to_string()+e.as_str(),
+    });
 
     println!("Loaded configuration: \n{:#?}", config);
 }
