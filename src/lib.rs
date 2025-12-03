@@ -25,14 +25,14 @@ impl<T: ConfigCheckable> ConfigCheckable for Vec<T>  {
     }
     fn __check(&self, depth: usize) -> Result<(), String> {
         let mut ret = Ok(());
-        let depth_space = String::from_utf8(vec![b' '; depth*2]).unwrap();
+        let depth_space = vec!["| "; depth].join("");
         let mut i = 0;
         for item in self {
-            if let Err(e) = item.__check(depth) {
+            if let Err(e) = item.__check(depth+1) {
                 if ret.is_ok() {
                     ret = Err(String::new());
                 }
-                ret = Err(ret.err().unwrap() + format!("{e}{} {depth_space}  {} From item number `{i}`\n", ::colored::Colorize::blue("NOTE: "), "\u{21b3}").as_str())
+                ret = Err(ret.err().unwrap() + format!("{e}{} {depth_space}From item number `{i}`:\n{e}", ::colored::Colorize::blue("NOTE: ")).as_str())
                 ;
             }
             i+= 1;
@@ -47,13 +47,13 @@ impl<T: ConfigCheckable> ConfigCheckable for Option<T>  {
     }
     fn __check(&self, depth: usize) -> Result<(), String> {
         let mut ret = Ok(());
-        let depth_space = String::from_utf8(vec![b' '; depth*2]).unwrap();
+        let depth_space = vec!["| "; depth].join("");
         if let Some(t) = self {
-            if let Err(e) = t.__check(depth) {
+            if let Err(e) = t.__check(depth+1) {
                 if ret.is_ok() {
                     ret = Err(String::new());
                 }
-                ret = Err(ret.err().unwrap() + format!("{e}{} {depth_space}  {} From option\n", ::colored::Colorize::blue("NOTE: "), "\u{21b3}").as_str());
+                ret = Err(ret.err().unwrap() + format!("{} {depth_space}From option:\n{e}", ::colored::Colorize::blue("NOTE: ")).as_str());
             }
         }
         ret

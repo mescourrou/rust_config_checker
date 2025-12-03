@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize, Check)]
 struct Root {
     #[convert(as_str)]
-    #[check(if(is_enum(self.child.gender, Gender::Male), inside("Papy", "Papa"), if(is_enum(self.child.gender, Gender::Female), inside("Mamie", "Maman"))))]
+    #[check(if(is_enum(self.child.as_ref().unwrap().gender, Gender::Male), inside("Papy", "Papa"), if(is_enum(self.child.as_ref().unwrap().gender, Gender::Female), inside("Mamie", "Maman"))))]
     name: String,
-    #[check(and(ge(0.), lt(self.child.value)))]
+    #[check(and(ge(0.), lt(self.child.as_ref().unwrap().value)))]
     value: f32,
     #[check]
-    child: Child,
+    child: Option<Child>,
 }
 
 impl Default for Root {
@@ -20,7 +20,7 @@ impl Default for Root {
         Self {
             name: "root".to_string(),
             value: 2.,
-            child: Child::default(),
+            child: Some(Child::default()),
         }
     }
 }
@@ -47,11 +47,15 @@ struct Truck {
 
 #[derive(Debug, Deserialize, Serialize, Check)]
 pub enum Toy {
+    #[check]
     Car(Car),
+    #[check]
     Truck(Truck),
+    None,
 }
 
 #[derive(Debug, Deserialize, Serialize, Check)]
+#[serde(default)]
 struct Child {
     #[check(or(ge(1.), lt(0.)))]
     value: f32,
@@ -76,6 +80,7 @@ impl Default for Child {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(default)]
 struct GreatChild {
     name: String,
     value: f32,
@@ -91,11 +96,11 @@ impl Default for GreatChild {
 }
 
 fn main() {
-    let config_path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config1.yaml"));
+    let config_path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config2.yaml"));
     let config: Root = match confy::load_path(config_path) {
         Ok(config) => config,
         Err(error) => {
-            println!("Error from Confy while loading the config file : {}", error);
+            println!("Error from Confy while loading the config file : {:?}", error);
             exit(-1);
         }
     };

@@ -71,23 +71,42 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
             let mut arms = TokenStream2::new();
             for variant in variants {
                 let id = variant.ident.clone();
-                if !variant.fields.is_empty() {
-                    arms.extend(quote! {
-                        #struct_identifier::#id(o) => {
-                            if let Err(e) = ::config_checker::__check_config(o, depth+1) { 
-                                if ret.is_ok() {
-                                    ret = Err(String::new());
-                                }
-                                ret = Err(ret.err().unwrap() + format!("{} {depth_space}From field `{}` of `{}`:\n{e}", "NOTE: ".blue(), stringify!(#id), stringify!(#struct_identifier)).as_str());
+                // Only check inside enum variant when #[check] attribute is present (path-only)
+                let mut should_check = false;
+                for attr in &variant.attrs {
+                    if let Some(attr_id) = &attr.meta.path().get_ident() {
+                        if attr_id.to_string().as_str() == "check" {
+                            if let Ok(_) = &attr.meta.require_path_only() {
+                                should_check = true;
+                            } else {
+                                panic!("`check` on enum variant should be a path-only attribute");
                             }
-                        },
-                    });
+                        }
+                    }
+                }
+
+                if should_check {
+                    if !variant.fields.is_empty() {
+                        arms.extend(quote! {
+                            #struct_identifier::#id(o) => {
+                                if let Err(e) = ::config_checker::__check_config(o, depth+1) { 
+                                    if ret.is_ok() {
+                                        ret = Err(String::new());
+                                    }
+                                    ret = Err(ret.err().unwrap() + format!("{} {depth_space}From field `{}` of `{}`:\n{e}", "NOTE: ".blue(), stringify!(#id), stringify!(#struct_identifier)).as_str());
+                                }
+                            },
+                        });
+                    }
                 }
             }
-            implementation.extend(quote!{match &self {
-                #arms
-                _ => {}
-            };});
+            // Only generate match statement if there are arms to match
+            if !arms.is_empty() {
+                implementation.extend(quote!{match &self {
+                    #arms
+                    _ => {}
+                };});
+            }
         },
         _ => unimplemented!(),
     }
@@ -139,13 +158,14 @@ fn evaluate_expr(
     for node in expr.clone().into_iter() {
         match &node {
             TokenTree::Group(g) => {
-                cond.last_mut().unwrap().extend(evaluate_ident(
+                let mut tmp = TokenStream2::new();
+                tmp.extend(evaluate_ident(
                     &ident.clone(),
                     g,
                     field_id,
                     struct_identifier,
                 ));
-                ident = TokenStream2::new();
+                ident = tmp;
             }
             TokenTree::Ident(i) => {
                 if point_before {
@@ -282,7 +302,7 @@ fn evaluate_ident(
             Ok(cond)
         }
         &_ => {
-            Ok(quote! {#ident #group}) // For enum(_)
+            Ok(quote! { #ident #group }) // For enum(_)
         }
     }
 }
