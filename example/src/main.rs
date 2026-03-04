@@ -1,18 +1,46 @@
 use std::{path::Path, process::exit};
 
-use config_checker::*;
-use config_checker::macros::Check;
 use serde::{Deserialize, Serialize};
+use config_checker::*;
 
 #[derive(Debug, Deserialize, Serialize, Check)]
 struct Root {
-    #[convert(as_str)]
-    #[check(if(is_enum(self.child.as_ref().unwrap().gender, Gender::Male), inside("Papy", "Papa"), if(is_enum(self.child.as_ref().unwrap().gender, Gender::Female), inside("Mamie", "Maman"))))]
     name: String,
-    #[check(and(ge(0.), lt(self.child.as_ref().unwrap().value)))]
     value: f32,
     #[check]
     child: Option<Child>,
+}
+
+impl Check for Root {
+    fn do_check(&self) -> Result<(), Vec<String>> {
+        let mut errors = Vec::new();
+        if let Some(child) = &self.child {
+            match &child.gender {
+                Gender::Male => {
+                    if self.name != "Papy" && self.name != "Papa" {
+                        errors.push(format!("Since the child is a male, the name should be `Papy` or `Papa`, but found `{}`", self.name));
+                    }
+                },
+                Gender::Female => {
+                    if self.name != "Mamie" && self.name != "Maman" {
+                        errors.push(format!("Since the child is a female, the name should be `Mamie` or `Maman`, but found `{}`", self.name));
+                    }
+                },
+                _ => {},
+            }
+            if self.value >= child.value {
+                errors.push(format!("The value should be less than the child's value ({}), but found `{}`", child.value, self.value));
+            }
+        }
+        if self.value < 0. {
+            errors.push(format!("The value should be positive, but found `{}`", self.value));
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
 }
 
 impl Default for Root {
@@ -34,15 +62,35 @@ pub enum Gender {
 
 #[derive(Debug, Deserialize, Serialize, Check)]
 struct Car {
-    #[check(and(gt(0.), lt(3500.)))]
     weight: f32,
+}
+
+impl Check for Car {
+    fn do_check(&self) -> Result<(), Vec<String>> {
+        if self.weight <= 0. {
+            Err(vec![format!("The weight should be greater than 0, but found `{}`", self.weight)])
+        } else if self.weight >= 3500. {
+            Err(vec![format!("The weight should be less than 3500, but found `{}`", self.weight)])
+        } else {
+            Ok(())
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Check)]
 struct Truck {
-    #[check(gt(3500.))]
     weight: f32,
     wheels: u8,
+}
+
+impl Check for Truck {
+    fn do_check(&self) -> Result<(), Vec<String>> {
+        if self.weight <= 3500. {
+            Err(vec![format!("The truck should have a weight greater than 3500, but found `{}`", self.weight)])
+        } else {
+            Ok(())
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Check)]
@@ -57,13 +105,22 @@ pub enum Toy {
 #[derive(Debug, Deserialize, Serialize, Check)]
 #[serde(default)]
 struct Child {
-    #[check(or(ge(1.), lt(0.)))]
     value: f32,
     #[check]
     gender: Gender,
     #[check]
     toy: Toy,
     child: GreatChild,
+}
+
+impl Check for Child {
+    fn do_check(&self) -> Result<(), Vec<String>> {
+        if self.value >= 0. && self.value < 1. {
+            Err(vec![format!("The value should be outside of the range ]0, 1], but found `{}`", self.value)])
+        } else {
+            Ok(())
+        }
+    }
 }
 
 impl Default for Child {
@@ -79,7 +136,7 @@ impl Default for Child {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Check)]
 #[serde(default)]
 struct GreatChild {
     name: String,
@@ -96,7 +153,7 @@ impl Default for GreatChild {
 }
 
 fn main() {
-    let config_path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config2.yaml"));
+    let config_path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config1.yaml"));
     let config: Root = match confy::load_path(config_path) {
         Ok(config) => config,
         Err(error) => {
