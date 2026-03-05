@@ -11,6 +11,9 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
 
     let struct_identifier = &input.ident;
 
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     let mut implementation = TokenStream2::new();
     match &input.data {
         Data::Struct(syn::DataStruct { fields, .. }) => {
@@ -94,7 +97,7 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
 
     quote! {
         #[automatically_derived]
-        impl ::config_checker::ConfigCheckable for #struct_identifier {
+        impl #impl_generics ::config_checker::ConfigCheckable for #struct_identifier #ty_generics #where_clause {
             fn check(&self) -> Result<(), String> {
                 self.__tree_check(0)
             }
