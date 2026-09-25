@@ -12,34 +12,33 @@ struct Root {
 }
 
 impl Check for Root {
-    fn do_check(&self) -> Result<(), Vec<String>> {
-        let mut errors = Vec::new();
+    fn do_check(&self) -> CheckResult {
+        let mut result = CheckResult::new();
         if let Some(child) = &self.child {
             match &child.gender {
                 Gender::Male => {
                     if self.name != "Papy" && self.name != "Papa" {
-                        errors.push(format!("Since the child is a male, the name should be `Papy` or `Papa`, but found `{}`", self.name));
+                        result.add_error(format!("Since the child is a male, the name should be `Papy` or `Papa`, but found `{}`", self.name));
                     }
                 },
                 Gender::Female => {
                     if self.name != "Mamie" && self.name != "Maman" {
-                        errors.push(format!("Since the child is a female, the name should be `Mamie` or `Maman`, but found `{}`", self.name));
+                        result.add_error(format!("Since the child is a female, the name should be `Mamie` or `Maman`, but found `{}`", self.name));
                     }
                 },
                 _ => {},
             }
             if self.value >= child.value {
-                errors.push(format!("The value should be less than the child's value ({}), but found `{}`", child.value, self.value));
+                result.add_error(format!("The value should be less than the child's value ({}), but found `{}`", child.value, self.value));
             }
         }
         if self.value < 0. {
-            errors.push(format!("The value should be positive, but found `{}`", self.value));
+            result.add_error(format!("The value should be positive, but found `{}`", self.value));
         }
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
+        if self.name.is_empty() {
+            result.add_warning("The name is empty".to_string());
         }
+        result
     }
 }
 
@@ -66,14 +65,14 @@ struct Car {
 }
 
 impl Check for Car {
-    fn do_check(&self) -> Result<(), Vec<String>> {
+    fn do_check(&self) -> CheckResult {
+        let mut result = CheckResult::new();
         if self.weight <= 0. {
-            Err(vec![format!("The weight should be greater than 0, but found `{}`", self.weight)])
+            result.add_error(format!("The weight should be greater than 0, but found `{}`", self.weight));
         } else if self.weight >= 3500. {
-            Err(vec![format!("The weight should be less than 3500, but found `{}`", self.weight)])
-        } else {
-            Ok(())
+            result.add_error(format!("The weight should be less than 3500, but found `{}`", self.weight));
         }
+        result
     }
 }
 
@@ -84,12 +83,15 @@ struct Truck {
 }
 
 impl Check for Truck {
-    fn do_check(&self) -> Result<(), Vec<String>> {
+    fn do_check(&self) -> CheckResult {
+        let mut result = CheckResult::new();
         if self.weight <= 3500. {
-            Err(vec![format!("The truck should have a weight greater than 3500, but found `{}`", self.weight)])
-        } else {
-            Ok(())
+            result.add_error(format!("The truck should have a weight greater than 3500, but found `{}`", self.weight));
         }
+        if self.wheels < 4 {
+            result.add_warning(format!("The truck has less than 4 wheels, found `{}`", self.wheels));
+        }
+        result
     }
 }
 
@@ -114,12 +116,12 @@ struct Child {
 }
 
 impl Check for Child {
-    fn do_check(&self) -> Result<(), Vec<String>> {
+    fn do_check(&self) -> CheckResult {
+        let mut result = CheckResult::new();
         if self.value >= 0. && self.value < 1. {
-            Err(vec![format!("The value should be outside of the range ]0, 1], but found `{}`", self.value)])
-        } else {
-            Ok(())
+            result.add_error(format!("The value should be outside of the range ]0, 1], but found `{}`", self.value));
         }
+        result
     }
 }
 
@@ -153,6 +155,7 @@ impl Default for GreatChild {
 }
 
 fn main() {
+    println!("====== config1.yaml ======");
     let config_path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config1.yaml"));
     let config: Root = match confy::load_path(config_path) {
         Ok(config) => config,
@@ -161,10 +164,24 @@ fn main() {
             exit(-1);
         }
     };
-    println!("Config check: {}", match config.check() {
-        Ok(_) => "OK".to_string(),
-        Err(e) => "\n".to_string()+e.as_str(),
-    });
+    let config_check = config.check();
+    println!("{}", config_check);
+    println!("Config check: {}", config_check.is_ok());
+
+    println!("Loaded configuration: \n{:#?}", config);
+
+    println!("====== config2.yaml ======");
+    let config_path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/config2.yaml"));
+    let config: Root = match confy::load_path(config_path) {
+        Ok(config) => config,
+        Err(error) => {
+            println!("Error from Confy while loading the config file : {:?}", error);
+            exit(-1);
+        }
+    };
+    let config_check = config.check();
+    print!("{}", config_check);
+    println!("Config check: {}", config_check.is_ok());
 
     println!("Loaded configuration: \n{:#?}", config);
 }

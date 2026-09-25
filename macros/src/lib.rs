@@ -34,12 +34,9 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
                             "check" => {
                                 if let Ok(_) = &attr.meta.require_path_only() {
                                     implementation.extend(quote! {
-                                        if let Err(e) = ::config_checker::__check_config(&self.#id, depth+1) {
-                                            if ret.is_ok() {
-                                                ret = Err(String::new());
-                                            }
-                                            ret = Err(ret.err().unwrap() + format!("{} {depth_space}From field `{}` of `{}`:\n{e}", "NOTE :".blue(), stringify!(#id), stringify!(#struct_identifier)).as_str());
-                                        }
+                                        let mut check_result = ::config_checker::__check_config(&self.#id, depth+1);
+                                        check_result.__push_stack(format!("Field `{}` of `{}`", stringify!(#id), stringify!(#struct_identifier)));
+                                        ret.__concatenate(check_result);
                                     });
                                 } else {
                                     panic!("`check` should be a path (for sub-struct check)");
@@ -73,12 +70,9 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
                     if !variant.fields.is_empty() {
                         arms.extend(quote! {
                             #struct_identifier::#id(o) => {
-                                if let Err(e) = ::config_checker::__check_config(o, depth+1) { 
-                                    if ret.is_ok() {
-                                        ret = Err(String::new());
-                                    }
-                                    ret = Err(ret.err().unwrap() + format!("{} {depth_space}From field `{}` of `{}`:\n{e}", "NOTE :".blue(), stringify!(#id), stringify!(#struct_identifier)).as_str());
-                                }
+                                let mut check_result = ::config_checker::__check_config(o, depth+1);
+                                check_result.__push_stack(format!("Field `{}` of `{}`", stringify!(#id), stringify!(#struct_identifier)));
+                                ret.__concatenate(check_result);
                             },
                         });
                     }
@@ -98,25 +92,20 @@ pub fn derive_check_config(item: TokenStream) -> TokenStream {
     quote! {
         #[automatically_derived]
         impl #impl_generics ::config_checker::ConfigCheckable for #struct_identifier #ty_generics #where_clause {
-            fn check(&self) -> Result<(), String> {
+            fn check(&self) -> ::config_checker::CheckResult {
                 self.__tree_check(0)
             }
 
-            fn __tree_check(&self, depth: usize) -> Result<(), String> {
+            fn __tree_check(&self, depth: usize) -> ::config_checker::CheckResult {
                 use colored::Colorize;
                 // use ::config_checker::*;
                 let depth_space = vec!["| "; depth].join("");
-                let mut ret = Ok(());
+                let mut ret = ::config_checker::CheckResult::new();
                 #implementation;
 
-                if let Err(e) = ::config_checker::__CheckBranching::<Self>::call_do_check(self) {
-                    if ret.is_ok() {
-                        ret = Err(String::new());
-                    }
-                    for (i, err) in e.into_iter().enumerate() {
-                        ret = Err(ret.err().unwrap() + format!("{} {depth_space}{err}\n", "ERROR:".red()).as_str());
-                    }
-                }
+                let mut check_result = ::config_checker::__CheckBranching::<Self>::call_do_check(self);
+                check_result.__push_stack(format!("Type `{}`", stringify!(#struct_identifier)));
+                ret.__concatenate(check_result);
                 ret
             }
         }
