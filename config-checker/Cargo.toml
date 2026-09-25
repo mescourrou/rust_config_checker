@@ -1,19 +1,17 @@
 [package]
-name = "config-checker-macros"
+name = "config-checker"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 resolver = "2"
-description = "Macros for the config-checker library."
+description.workspace = true
 readme.workspace = true
 repository.workspace = true
 
 [lib]
-proc-macro = true
 
 
 [dependencies]
-syn = "2.0.98"
-quote = "1.0.38"
-proc-macro2 = "1.0.93"
+colored = "3.0.0"
+config-checker-macros = {path = "../macros", version = "*"}

@@ -1,12 +1,20 @@
-[package]
-name = "config-checker"
-version = "0.4.0"
-edition = "2024"
+[workspace]
+members = [
+    "config-checker",
+    "macros",
+    "example",
+]
+default-members = [
+    "config-checker",
+    "macros",
+]
 resolver = "2"
 
-[lib]
-
-
-[dependencies]
-colored = "3.0.0"
-config-checker-macros = {path = "./macros", version = "*"}
+[workspace.package]
+version = "0.4.0"
+authors = ["Maxime Escourrou <maxime.escourrou@laas.fr>"]
+edition = "2024"
+license = "MIT"
+description = "A library to check configuration structs recursively."
+readme = "README.md"
+repository = "https://github.com/mescourrou/rust_config_checker.git"
